@@ -1,0 +1,31 @@
+flowchart LR
+  subgraph BR["Visitor's browser"]
+    ls[("localStorage<br/>uno_chat_session = session id")]
+  end
+  subgraph VM["VM uno-wordpress (Docker volumes)"]
+    direction TB
+    maria[("MariaDB 11, database wordpress (volume db_data)<br/>wp_options: uno_rag_chatbot_options,<br/>uno_chat_day_YYYYMMDD, _transient_uno_chat_*<br/>wp_posts / wp_postmeta: Home, chat page, menu<br/>wp_users: admin")]
+    wpfiles[("wp_data: WordPress core,<br/>theme, uploads")]
+    certs[("caddy_data: TLS certificates")]
+    venv[("/opt/uno-wp/.env<br/>DB passwords, domain")]
+  end
+  subgraph CR["Cloud Run container uno-rag-backend"]
+    direction TB
+    chroma[("/app/chroma_db (baked into the image)<br/>chroma.sqlite3 + HNSW files<br/>collection uno_docs_gemini, 60 chunks")]
+    tmp[("/tmp/uno-cache (per instance)<br/>answers.sqlite3, query_embeddings.sqlite3,<br/>usage.json")]
+    ram[("RAM: LangGraph MemorySaver<br/>checkpoints per session_id")]
+  end
+  subgraph LF["Langfuse Cloud"]
+    lfdata[("traces, observations, scores,<br/>datasets, experiment runs")]
+  end
+  subgraph PC["Developer PC (git-ignored)"]
+    direction TB
+    pcenv[(".env: settings + secrets")]
+    pcchroma[("chroma_db/: source of the index")]
+    pccache[("cache/: local caches")]
+  end
+  ls -- "session_id in every request" --> maria
+  maria -- "plugin settings: backend URL + key" --> CR
+  pcchroma -- "prepare_index.py copy at deploy" --> chroma
+  pcenv -- "make_env.py at deploy" --> CR
+  CR -- "traces + feedback scores" --> lfdata

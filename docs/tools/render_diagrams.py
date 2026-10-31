@@ -22,6 +22,7 @@ CONFIG = {
     "securityLevel": "strict",
     "fontFamily": "Segoe UI, Arial, sans-serif",
     "flowchart": {"useMaxWidth": False, "wrappingWidth": 420, "htmlLabels": True, "curve": "basis", "padding": 14, "nodeSpacing": 34, "rankSpacing": 46},
+    "er": {"useMaxWidth": False, "fontSize": 14},
     "sequence": {"useMaxWidth": False, "mirrorActors": False, "messageMargin": 28, "boxMargin": 8},
     "themeVariables": {
         "fontSize": "15px",

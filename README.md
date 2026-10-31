@@ -26,6 +26,7 @@ A retrieval-augmented chatbot that answers questions about five UNO rulebooks (C
 - [Local setup](#local-setup)
 - [Cloud deployment](#cloud-deployment)
 - [Configuration](#configuration)
+- [Databases and data stores](#databases-and-data-stores)
 - [API reference](#api-reference)
 - [Security](#security)
 - [Evaluation](#evaluation)
@@ -159,6 +160,98 @@ Plugin settings (WordPress → Settings → UNO Chatbot):
 - floating bubble
 - questions per visitor per hour (deployed: 10)
 - questions per day for the whole site (300)
+
+## Databases and data stores
+![Data stores](docs/diagrams/17_data_stores.png)
+
+| Store | Technology | Location | Contents | Lifetime |
+|---|---|---|---|---|
+| Vector database | ChromaDB (embedded: SQLite + HNSW) | `chroma_db/` locally; `/app/chroma_db` in the Cloud Run image | 60 rulebook chunks, 768-d embeddings, metadata | Rebuilt by `python -m app.ingest --reset` |
+| Answer cache | SQLite | `cache/answers.sqlite3` (`/tmp/uno-cache` on Cloud Run) | First-turn rulebook answers + sources | Per Cloud Run instance |
+| Query-embedding cache | SQLite | `cache/query_embeddings.sqlite3` | 768-d query vectors | Per Cloud Run instance |
+| Usage counter | JSON | `cache/usage.json` | Model requests today | Resets every UTC day |
+| Conversation memory | LangGraph MemorySaver | Backend RAM | Graph state per `session_id` | Until restart or New chat |
+| Website database | MariaDB 11 | Docker volume `db_data` on the VM | WordPress content, plugin settings, rate-limit counters | Persistent (back up with disk snapshots) |
+| Browser | localStorage | Visitor's browser | `uno_chat_session` (session id) | Until New chat |
+| Monitoring | Langfuse Cloud | SaaS | Traces, scores, datasets | Plan retention |
+
+### ChromaDB (vector database)
+Chroma runs inside the backend process; there's no separate database server.
+
+**Collection `uno_docs_gemini`:**
+- 768 dimensions, cosine distance (`hnsw:space = cosine`), HNSW index
+- one record per chunk:
+
+| Field | Type | Example |
+|---|---|---|
+| `id` | string | `uno flip.pdf:1:4` (file:page:chunk) |
+| `document` | text | `Rulebook: Uno Flip` + chunk text (~860 chars) |
+| `embedding` | float[768] | gemini-embedding-2 vector |
+| `metadata.source` | string | `uno flip.pdf` (shown as the citation) |
+| `metadata.page` | int | `1` |
+| `metadata.chunk` | int | `4` |
+| `metadata.title` | string | `Uno Flip` (used for the rulebook filter alias `flip`) |
+
+**On disk:** `chroma_db/chroma.sqlite3` plus one folder per vector segment, holding the HNSW files `data_level0.bin`, `link_lists.bin`, `header.bin` and `length.bin`. The main SQLite tables:
+
+| Table | Rows | Purpose |
+|---|---|---|
+| `tenants`, `databases` | 1, 1 | Namespaces |
+| `collections`, `collection_metadata` | 1, 1 | `uno_docs_gemini`, dimension 768, `hnsw:space = cosine` |
+| `segments` | 2 | One VECTOR segment (HNSW files) and one METADATA segment (SQLite) |
+| `embeddings` | 60 | One row per chunk: `embedding_id` = chunk id, sequence number, timestamp |
+| `embedding_metadata` | 300 | Key/value rows per chunk: `source`, `page`, `chunk`, `title`, `chroma:document` (the text) |
+| `embedding_fulltext_search*` | 60 | FTS5 trigram index of the chunk text |
+| `embeddings_queue`, `max_seq_id` | 60, 1 | Write-ahead log that keeps both segments in sync |
+
+![Chroma schema](docs/diagrams/16_chroma_schema.png)
+
+### Backend caches and counter
+Both caches use the same one-table schema:
+```sql
+CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+```
+
+| File | Key `k` (SHA-256 of) | Value `v` (JSON) |
+|---|---|---|
+| `answers.sqlite3` | router model, answer model, embed model, collection, prompt fingerprint, normalized question | `{"answer": "...", "sources": [{"source": "...", "page": 1}]}` |
+| `query_embeddings.sqlite3` | embed model, dimensions, prefix + query text | `[768 floats]` |
+
+`usage.json` holds `{"date": "2026-11-01", "count": 512}`. At `DAILY_REQUEST_BUDGET` the API returns 429.
+
+### Conversation memory
+LangGraph checkpoints per thread (`thread_id` = `session_id`) hold:
+- `messages`: the chat history; the last 6 go to the router
+- `question` and `standalone_question`
+- `route`: chitchat, rulebook or off_topic
+- `reply`
+- `search_query`
+- `documents` and `used_documents`
+- `found` and `rewrites`
+
+`DELETE /chat/{session_id}` removes a conversation.
+
+### WordPress database (MariaDB)
+WordPress uses its standard schema (prefix `wp_`). The plugin creates no tables of its own; it uses `wp_options`:
+
+| `option_name` | Value |
+|---|---|
+| `uno_rag_chatbot_options` | Serialized array: `backend_url`, `api_key`, `title`, `welcome`, `floating`, `per_hour`, `per_day` |
+| `uno_chat_day_YYYYMMDD` | Questions answered site-wide that UTC day (incremented atomically; old days deleted) |
+| `_transient_uno_chat_rl_<md5(IP)>` | `{count, reset}`: questions from one IP this hour |
+| `_transient_uno_chat_fb_<md5(IP)>` | Same, for thumbs up/down ratings |
+
+**Pages:**
+- `wp_posts` holds the `home` page (`[uno_chatbot_home]`), the `uno-rules-chat` page (`[uno_chatbot layout="page"]`) and the `Main menu` navigation.
+- `wp_postmeta` sets `_wp_page_template = page-no-title` on both pages.
+- `wp_options` sets `show_on_front = page`, `page_on_front` = Home and `permalink_structure = /%postname%/`.
+
+**Notes:**
+- **IPs** appear only as MD5 hashes in transient names, which expire after an hour.
+- **Network access:** MariaDB is reachable only on the internal Docker network.
+- **Backups:** VM disk snapshots, or `wp db export`.
+
+Full details, including every table, are in section 4 of the [technical report](docs/UNO_RAG_Chatbot_Technical_Report.docx).
 
 ## API reference
 **Backend (FastAPI):**

@@ -1,0 +1,59 @@
+erDiagram
+  tenants ||--o{ databases : owns
+  databases ||--o{ collections : contains
+  collections ||--o{ collection_metadata : configured_by
+  collections ||--|{ segments : stored_in
+  segments ||--o{ embeddings : holds
+  embeddings ||--o{ embedding_metadata : described_by
+  embeddings ||--|| embedding_fulltext_search : text_indexed_in
+  segments ||--o| hnsw_index_files : vector_segment_files
+  tenants {
+    TEXT id PK "default_tenant"
+  }
+  databases {
+    TEXT id PK
+    TEXT name "default_database"
+    TEXT tenant_id FK
+  }
+  collections {
+    TEXT id PK "UUID"
+    TEXT name "uno_docs_gemini"
+    INTEGER dimension "768"
+    TEXT database_id FK
+    TEXT config_json_str "HNSW settings"
+  }
+  collection_metadata {
+    TEXT collection_id PK, FK
+    TEXT key PK "hnsw:space"
+    TEXT str_value "cosine"
+  }
+  segments {
+    TEXT id PK "UUID = folder name"
+    TEXT type "hnsw-local-persisted or sqlite"
+    TEXT scope "VECTOR or METADATA"
+    TEXT collection FK
+  }
+  embeddings {
+    INTEGER id PK
+    TEXT segment_id FK
+    TEXT embedding_id "file:page:chunk"
+    BLOB seq_id
+    TIMESTAMP created_at
+  }
+  embedding_metadata {
+    INTEGER id PK, FK
+    TEXT key PK "source, page, chunk, title, chroma:document"
+    TEXT string_value
+    INTEGER int_value
+    REAL float_value
+    INTEGER bool_value
+  }
+  embedding_fulltext_search {
+    TEXT string_value "FTS5 trigram index of chunk text"
+  }
+  hnsw_index_files {
+    BIN data_level0 "768-d vectors + base graph layer"
+    BIN link_lists "upper graph layers"
+    BIN header "index parameters"
+    BIN length "id to label map"
+  }

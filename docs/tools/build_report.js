@@ -92,7 +92,7 @@ function pngSize(file) {
 }
 // Figures in document order; prose cites them with fig("file.png") so numbers always match
 const ORDER = [
-  "01_architecture.png", "15_data_flow.png", "03_ingestion_pipeline.png", "04_retrieval_pipeline.png", "chart_retrieval.png",
+  "01_architecture.png", "15_data_flow.png", "03_ingestion_pipeline.png", "17_data_stores.png", "16_chroma_schema.png", "04_retrieval_pipeline.png", "chart_retrieval.png",
   "05_langgraph_flow.png", "06a_chat_sequence_frontend.png", "06b_chat_sequence_backend.png", "07_feedback_sequence.png",
   "11_frontend_components.png", "09_security_layers.png", "08_api_key_flow.png", "10_rate_limiting_flow.png",
   "02_deployment_topology.png", "12_deploy_backend.png", "13_deploy_wordpress.png", "chart_accuracy.png", "chart_latency.png",
@@ -215,7 +215,7 @@ add(
   ]),
   P("Each answer also feeds the answer cache, so a repeated first question costs no model calls. It also produces a Langfuse trace, which later receives the visitor's thumbs up/down."),
   figure("15_data_flow.png", "Data flow: indexing and answering", { scale: 0.58 }),
-  P("Where data is stored:"),
+  P("Where data is stored (schemas in sections 4.4–4.9):"),
   table(["Data", "Stored in", "Lifetime"], [
     ["Rulebook PDFs", "Data/ in the repository and in the backend image", "Permanent"],
     ["Chunks + embeddings", "chroma_db/ locally; copied into the Cloud Run image", "Until the next ingest"],
@@ -330,7 +330,7 @@ add(
 
 // ---------------- 4. Ingestion ----------------
 add(
-  H1("4. Data ingestion"),
+  H1("4. Data ingestion and databases"),
   P(`\`python -m app.ingest --reset\` turns the PDFs in \`Data/\` into searchable chunks (Figure ${fig("03_ingestion_pipeline.png")}). Ingestion runs locally. The finished index is copied into the Cloud Run image, so the deployed backend never re-embeds the PDFs on start-up.`),
   figure("03_ingestion_pipeline.png", "Ingestion pipeline", { scale: 0.6, maxH: 720 }),
   H2("4.1 Steps"),
@@ -370,6 +370,158 @@ add(
     ["metadata.title", "string", "Uno Flip", "Rulebook title; basis for the alias used by the title filter"],
     ["collection metadata", "map", "hnsw:space = cosine", "Distance function of the HNSW index"],
   ], [1800, 1100, 2700, 3426], { size: 17 }),
+);
+
+// ---------------- 4.4+ databases ----------------
+add(
+  landscape(H2("4.4 Data stores overview"),
+    P(`The system keeps data in six places. Figure ${fig("17_data_stores.png")} shows each store, where it lives and how data moves between them.`),
+    figure("17_data_stores.png", "All data stores and how data moves between them", { land: true })),
+  table(["Store", "Technology", "Location", "Contents", "Lifetime / backup"], [
+    ["Vector database", "ChromaDB 1.x (SQLite + HNSW)", "chroma_db/ on the PC; /app/chroma_db in the Cloud Run image", "60 chunks, embeddings, metadata", "Rebuilt by ingest; read-only copy baked into each image"],
+    ["Answer cache", "SQLite table kv", "cache/answers.sqlite3 (PC); /tmp/uno-cache (Cloud Run)", "First-turn rulebook answers + sources", "Per Cloud Run instance; persistent on the PC"],
+    ["Query-embedding cache", "SQLite table kv", "cache/query_embeddings.sqlite3", "768-d query vectors", "Same as above"],
+    ["Usage counter", "JSON file", "cache/usage.json", "Model requests today", "Resets each UTC day (and per instance)"],
+    ["Conversation memory", "LangGraph MemorySaver", "RAM of the backend process", "Graph state per session_id", "Until restart / scale to zero / New chat"],
+    ["Website database", "MariaDB 11", "Docker volume db_data on the VM", "WordPress content, plugin settings, limits", "Persistent; back up with VM disk snapshots"],
+    ["Browser storage", "localStorage", "Visitor's browser", "Session id", "Until New chat or cleared"],
+    ["Monitoring store", "Langfuse Cloud", "SaaS (EU)", "Traces, scores, datasets", "Langfuse plan retention"],
+  ], [1500, 1500, 2300, 1900, 1826], { size: 16 }),
+);
+add(
+  H2("4.5 Vector database (ChromaDB) schema"),
+  P("Chroma runs embedded in the backend process (`chromadb.PersistentClient`); there is no separate database server. One folder holds everything:"),
+  ...code([
+    "chroma_db/",
+    "├── chroma.sqlite3            catalogue, chunk ids, metadata, text,",
+    "│                             full-text index, write-ahead queue",
+    "└── <segment UUID>/          HNSW vector index (uno_docs_gemini)",
+    "    ├── data_level0.bin       768-d vectors + base graph layer",
+    "    ├── link_lists.bin        upper graph layers",
+    "    ├── header.bin            index parameters (cosine, M, ef)",
+    "    └── length.bin            label to embedding map",
+  ]),
+  P(`Inside \`chroma.sqlite3\`, the tables relate as in Figure ${fig("16_chroma_schema.png")}. Each collection has two segments: a **METADATA** segment (rows in SQLite) and a **VECTOR** segment (the HNSW files). Chroma keeps the two in sync through the \`embeddings_queue\` write-ahead log.`),
+  figure("16_chroma_schema.png", "ChromaDB storage schema (chroma.sqlite3 + HNSW files)", { maxW: 600, maxH: 860 }),
+  table(["Table", "Rows (current)", "Purpose"], [
+    ["tenants / databases", "1 / 1", "Namespaces (default_tenant / default_database)"],
+    ["collections", "1", "uno_docs_gemini, dimension 768, HNSW configuration (JSON)"],
+    ["collection_metadata", "1", "hnsw:space = cosine"],
+    ["segments", "2", "One VECTOR segment (HNSW files, folder named by its UUID) and one METADATA segment (SQLite)"],
+    ["embeddings", "60", "One row per chunk: internal id, segment, embedding_id (= chunk id file:page:chunk), sequence number, created_at"],
+    ["embedding_metadata", "300", "Key/value rows per chunk: source, page, chunk, title and chroma:document (the chunk text): 5 keys × 60 chunks"],
+    ["embedding_fulltext_search (+ _content, _data, _docsize, _idx, _config)", "60", "SQLite FTS5 trigram index of the chunk text (used by Chroma's where_document filters)"],
+    ["embeddings_queue (+ _config)", "60", "Write-ahead log of add/update/delete operations with the vector and metadata, applied to both segments"],
+    ["max_seq_id", "1", "Last applied queue position per segment"],
+    ["segment_metadata, embedding_metadata_array, maintenance_log", "0", "Unused here"],
+    ["migrations, acquire_write", "18 / 11", "Chroma's own schema migrations and write locks"],
+  ], [3000, 1300, 4726], { size: 16 }),
+  P("Logical record of one chunk, as the application reads and writes it through the Chroma API:"),
+  ...code([
+    "id        \"uno flip.pdf:1:4\"             (file:page:chunk)",
+    "document  \"Rulebook: Uno Flip\\nSKIP ...\"   (header + text, ~860 chars)",
+    "embedding [768 floats]                 (gemini-embedding-2)",
+    "metadata  {source: \"uno flip.pdf\", page: 1, chunk: 4, title: \"Uno Flip\"}",
+  ]),
+  P("How the backend uses it:"),
+  ...bullets([
+    "**Similarity search:** `asimilarity_search(query, k=18, filter={\"source\": {\"$in\": [...]}})`, which finds the nearest vectors (cosine) and returns them with document and metadata.",
+    "**Keyword index:** `get(include=[documents, metadatas])` loads all 60 chunks once to build the in-memory BM25 index and the rulebook aliases.",
+    "**Writes:** only `python -m app.ingest` (delete and re-create the collection with `--reset`, then `add_documents` with ids), or `POST /ingest`.",
+    "**Deploy copy:** `deploy/cloudrun/prepare_index.py` copies only this collection, with its stored embeddings, into a clean folder for the image. No embedding requests are made.",
+  ]),
+);
+add(
+  H2("4.6 Backend caches and usage counter"),
+  P("Both caches are small SQLite databases with one table, written by `KVCache` in `app/llm.py`:"),
+  ...code([
+    "CREATE TABLE kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);",
+  ]),
+  table(["File", "Key k", "Value v (JSON)", "Written when"], [
+    ["answers.sqlite3", "SHA-256 of router model, answer model, embed model, collection, prompt fingerprint and the normalized question (lower case, spaces collapsed, trailing ?!. removed)", "{\"answer\": \"...\", \"sources\": [{\"source\": \"Uno No mercy.pdf\", \"page\": 1}]}", "A first-turn rulebook question was answered from the rulebooks (found = true)"],
+    ["query_embeddings.sqlite3", "SHA-256 of embed model, dimensions and prefix + query text", "[768 floats]", "A search query was embedded"],
+  ], [1800, 3100, 2300, 1826], { size: 16 }),
+  P("Because the models, collection and prompts are part of the key, changing any of them automatically invalidates old entries. Nothing personal is stored: only questions, answers and vectors."),
+  P("The daily usage counter is a small JSON file, `usage.json`:"),
+  ...code(["{\"date\": \"2026-11-01\", \"count\": 512}   # requests on this UTC date"]),
+  P("Every Gemini request first calls `usage.reserve()`. When `count` would pass `DAILY_REQUEST_BUDGET` (2000), the call raises `DailyLimitReached` and the API answers 429."),
+);
+add(
+  H2("4.7 Conversation memory (LangGraph state)"),
+  P("LangGraph's `MemorySaver` keeps one checkpoint per thread (`thread_id` = the widget's `session_id`) in the backend's memory. Each checkpoint stores the graph state:"),
+  table(["Field", "Type", "Meaning"], [
+    ["messages", "list[BaseMessage] (append-only)", "The conversation: HumanMessage / AIMessage pairs; the last 6 are given to the router"],
+    ["question", "str", "The visitor's latest message"],
+    ["route", "str", "chitchat, rulebook or off_topic"],
+    ["reply", "str", "Small-talk reply drafted by the router"],
+    ["standalone_question", "str", "The question rewritten without chat context"],
+    ["search_query", "str", "Text sent to retrieval (changes after a rewrite)"],
+    ["documents", "list[Document]", "The 6 retrieved chunks"],
+    ["used_documents", "list[Document]", "Chunks the answer used, which become the sources"],
+    ["found", "bool", "Whether the answer model found the answer in the chunks"],
+    ["rewrites", "int", "How many query rewrites were done (max 1)"],
+  ], [2200, 2400, 4426], { size: 16 }),
+  P("`DELETE /chat/{session_id}` (the New chat button) deletes the thread. Memory is lost when the Cloud Run instance stops. That's acceptable for short rule questions; a persistent checkpointer (for example Postgres) would keep conversations across restarts."),
+);
+add(
+  H2("4.8 WordPress database (MariaDB)"),
+  P("WordPress uses its standard schema in the database `wordpress` with the table prefix `wp_`:"),
+  ...bullets([
+    "`wp_posts`, `wp_postmeta`",
+    "`wp_options`",
+    "`wp_users`, `wp_usermeta`",
+    "`wp_terms`, `wp_term_taxonomy`, `wp_term_relationships`, `wp_termmeta`",
+    "`wp_comments`, `wp_commentmeta`",
+    "`wp_links`",
+  ]),
+  P("The plugin creates **no tables of its own**. It stores its data in `wp_options`, with this layout:"),
+  ...code([
+    "CREATE TABLE wp_options (",
+    "  option_id    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+    "  option_name  VARCHAR(191) NOT NULL UNIQUE,",
+    "  option_value LONGTEXT NOT NULL,          -- PHP-serialized for arrays",
+    "  autoload     VARCHAR(20) NOT NULL DEFAULT 'yes'",
+    ");",
+  ]),
+  table(["option_name", "option_value", "Written by"], [
+    ["uno_rag_chatbot_options", "Serialized array: backend_url, api_key, title, welcome, floating (0/1), per_hour (questions per visitor per hour), per_day (site-wide daily cap)", "Settings page; deploy (plugin-options.php)"],
+    ["uno_chat_day_YYYYMMDD", "Integer: questions answered site-wide on that UTC day (autoload off; incremented in SQL with UPDATE … + 1; older days deleted)", "/ask"],
+    ["_transient_uno_chat_rl_<md5(IP)>", "Serialized array {count, reset (unix time)}: questions by one IP in the current hour", "/ask"],
+    ["_transient_uno_chat_fb_<md5(IP)>", "Same format for thumbs up/down ratings (limit 60/hour)", "/feedback"],
+    ["_transient_timeout_uno_chat_*", "Expiry time of the matching transient", "WordPress"],
+  ], [2500, 4500, 2026], { size: 16 }),
+  P("Content created by `wordpress/setup/pages.php`:"),
+  table(["Table", "Rows", "Values"], [
+    ["wp_posts", "Page home", "post_type page, content `[uno_chatbot_home]` shortcode block"],
+    ["wp_posts", "Page uno-rules-chat", "post_type page, content `[uno_chatbot layout=\"page\"]` shortcode block"],
+    ["wp_posts", "Main menu", "post_type wp_navigation with a single Home link"],
+    ["wp_postmeta", "_wp_page_template", "page-no-title for both pages"],
+    ["wp_options", "show_on_front / page_on_front", "page / ID of the Home page"],
+    ["wp_options", "permalink_structure", "/%postname%/"],
+  ], [1700, 2600, 4726], { size: 16 }),
+  P("Security notes:"),
+  ...bullets([
+    "**Visitor IPs:** they appear only as MD5 hashes in transient names, and transients expire after one hour.",
+    "**API key:** it is the one secret in the database. Only WordPress PHP and database administrators can read it.",
+    "**Database access:** MariaDB is reachable only on the internal Docker network, with a random password generated on the VM.",
+    "**Uninstall:** removes the plugin option and the daily counters.",
+  ]),
+);
+add(
+  H2("4.9 Other stores"),
+  table(["Store", "Schema", "Notes"], [
+    ["Browser localStorage", "uno_chat_session = random id (letters, digits, - and _)", "Sent with each question; replaced by New chat"],
+    ["Langfuse Cloud", "Trace (name chat, session, user = visitor hash, input, output, metadata, tags) → observations (graph nodes, LLM generations with model and tokens, embedding call) → scores (user-feedback BOOLEAN; eval scores); datasets uno-rulebook-qa with items and experiment runs", "Written by the backend and the evaluation; nothing is read back by the app"],
+    ["Caddy volumes", "caddy_data: certificates and ACME account; caddy_config: runtime config", "Kept across redeploys so certificates are not re-requested"],
+    ["/opt/uno-wp/.env on the VM", "DB_PASSWORD, DB_ROOT_PASSWORD, SITE_DOMAIN, CF_IP_RANGES", "Mode 600, root only; generated on the VM"],
+    ["Repository .env", "All settings in Appendix A", "Git-ignored; source of the Cloud Run environment"],
+  ], [2000, 4700, 2326], { size: 16 }),
+  P("Backup and restore:"),
+  ...bullets([
+    "**Search index:** rebuildable from the PDFs with `python -m app.ingest --reset`, so it needs no backup.",
+    "**Backend caches and counters:** disposable.",
+    "**WordPress:** back it up with VM disk snapshots, or `wp db export` inside the wpcli container.",
+  ]),
 );
 
 // ---------------- 5. Retrieval ----------------
@@ -982,6 +1134,8 @@ add(
     ["13_deploy_wordpress.mmd", fig("13_deploy_wordpress.png"), "VM deployment workflow"],
     ["14_setup_from_scratch.mmd", fig("14_setup_from_scratch.png"), "Setup order from a new machine"],
     ["15_data_flow.mmd", fig("15_data_flow.png"), "Indexing and answering data flow"],
+    ["16_chroma_schema.mmd", fig("16_chroma_schema.png"), "ChromaDB storage schema (entity-relationship)"],
+    ["17_data_stores.mmd", fig("17_data_stores.png"), "All data stores and data movement"],
   ].map(([f, n, d]) => [`\`${f}\``, String(n), d]), [3600, 900, 4526], { size: 17 }),
 );
 
