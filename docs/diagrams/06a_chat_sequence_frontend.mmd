@@ -1,0 +1,18 @@
+sequenceDiagram
+  autonumber
+  actor U as Visitor
+  participant JS as chatbot.js
+  participant CF as Cloudflare
+  participant CA as Caddy
+  participant WP as WordPress plugin
+  U->>JS: types a question, Send
+  JS->>CF: POST /wp-json/uno-chat/v1/ask<br/>{question, session_id} + X-WP-Nonce
+  CF->>CA: forward over HTTPS<br/>CF-Connecting-IP = visitor IP
+  CA->>CA: per-IP limits<br/>300/min site, 20/min chat API
+  CA->>WP: proxy, X-Real-IP = visitor IP
+  WP->>WP: nonce check<br/>10 questions/hour per IP<br/>300 questions/day site-wide
+  Note over WP: continues in the backend<br/>sequence (next diagram)
+  WP-->>CA: {answer, sources, trace_id}
+  CA-->>CF: response
+  CF-->>JS: response
+  JS-->>U: answer, source chips,<br/>thumbs up/down

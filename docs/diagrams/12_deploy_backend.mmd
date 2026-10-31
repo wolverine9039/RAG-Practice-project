@@ -1,0 +1,20 @@
+flowchart LR
+  subgraph PC["On the developer PC: deploy\cloudrun\deploy.ps1"]
+    direction TB
+    s1["Enable APIs: Cloud Run, Cloud Build,<br/>Artifact Registry, Vertex AI"]
+    s2["Service account uno-rag-backend@<br/>+ Vertex AI User (skip: -SkipIamGrants)"]
+    s3["prepare_index.py: copy uno_docs_gemini<br/>(60 chunks + embeddings) to deploy/build"]
+    s4["make_env.py: .env to env.generated.yaml<br/>(Cloud Run overrides + secrets)"]
+    s5["gcloud run deploy --source .<br/>(.gcloudignore: no .env, no .venv)"]
+    s1 --> s2 --> s3 --> s4 --> s5
+  end
+  subgraph GC["In Google Cloud"]
+    direction TB
+    c1["Cloud Build builds the Dockerfile<br/>python:3.13-slim, non-root, index baked in"]
+    c2["Image stored in Artifact Registry"]
+    c3["New Cloud Run revision<br/>1 vCPU, 1 GiB, 0 to 1 instances,<br/>concurrency 20, timeout 120 s, CPU boost"]
+    c4["Traffic switched to the new revision"]
+    c1 --> c2 --> c3 --> c4
+  end
+  fin["Back on the PC: delete env.generated.yaml,<br/>print the service URL"]
+  PC ==> GC ==> fin

@@ -1,0 +1,98 @@
+# Production WordPress front end for the UNO RAG chatbot (Google Compute Engine VM).
+# Lives in /opt/uno-wp on the VM next to .env (DB passwords, SITE_DOMAIN), plugin/ and setup/.
+# Installed and updated by deploy/wordpress/deploy.ps1 -> vm-setup.sh; do not run this on your PC.
+x-db-env: &db-env
+  WORDPRESS_DB_HOST: db
+  WORDPRESS_DB_USER: wordpress
+  WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:?set in .env}
+  WORDPRESS_DB_NAME: wordpress
+
+# Cap container logs so a flood of requests can't fill the disk
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    logging: *logging
+    # Sized for an e2-small VM (2 GB) shared with Apache/PHP and Caddy
+    command: ["--innodb-buffer-pool-size=128M", "--performance-schema=OFF", "--max-connections=40"]
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set in .env}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      db:
+        condition: service_healthy
+    # No published port: only Caddy (same Docker network) can reach it
+    environment:
+      <<: *db-env
+      # Caddy sets X-Real-IP to the real visitor IP (from Cloudflare's CF-Connecting-IP, trusted only from Cloudflare's
+      # ranges) and overwrites any client-supplied value; WordPress is only reachable through Caddy. Without this every
+      # visitor would share Caddy's IP and the plugin's per-visitor rate limit would throttle everyone together.
+      # (X-Forwarded-Proto -> HTTPS is handled by the image's wp-config-docker.php.)
+      WORDPRESS_CONFIG_EXTRA: |
+        if ( ! empty( $$_SERVER['HTTP_X_REAL_IP'] ) ) {
+          $$_SERVER['REMOTE_ADDR'] = $$_SERVER['HTTP_X_REAL_IP'];
+        }
+        define( 'DISALLOW_FILE_EDIT', true );
+        define( 'WP_MEMORY_LIMIT', '128M' );
+    volumes:
+      - wp_data:/var/www/html
+      - ./plugin/uno-rag-chatbot:/var/www/html/wp-content/plugins/uno-rag-chatbot:ro
+
+  caddy:
+    build: ./caddy   # caddy:2 + rate limiting module
+    image: uno-wp-caddy
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      - wordpress
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set in .env}
+      CF_IP_RANGES: ${CF_IP_RANGES:-private_ranges}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data   # certificates; keep this volume so restarts don't request new ones
+      - caddy_config:/config
+
+  # One-off wp-cli container used by vm-setup.sh (docker compose run --rm wpcli ...)
+  wpcli:
+    image: wordpress:cli-php8.3
+    profiles: ["tools"]
+    user: "33:33"  # same www-data uid as the apache image, so wp-cli can write .htaccess
+    depends_on:
+      - wordpress
+    environment:
+      <<: *db-env
+    volumes:
+      - wp_data:/var/www/html
+      - ./plugin/uno-rag-chatbot:/var/www/html/wp-content/plugins/uno-rag-chatbot:ro
+      - ./setup:/setup:ro
+
+volumes:
+  db_data:
+  wp_data:
+  caddy_data:
+  caddy_config:

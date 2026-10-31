@@ -1,0 +1,15 @@
+flowchart TB
+  env[".env on the developer PC (git-ignored)<br/>BACKEND_API_KEY, Langfuse keys"]
+  crenv["Cloud Run environment variables<br/>(readable only inside the container)"]
+  wpopt["WordPress option uno_rag_chatbot_options<br/>(MariaDB on the VM)"]
+  browser(["Visitor's browser"])
+  sa["Service account uno-rag-backend@<br/>role: Vertex AI User"]
+  vertex["Vertex AI Gemini"]
+  env -- "make_env.py: env.generated.yaml<br/>(deleted right after the deploy)" --> crenv
+  env -- "deploy.ps1: plugin-settings.json in the bundle<br/>(passed to wp-cli on stdin, deleted on PC and VM)" --> wpopt
+  wpopt -- "PHP adds X-API-Key<br/>server to server over HTTPS" --> crenv
+  browser -- "gets only a WordPress REST nonce" --> wpopt
+  crenv -.- sa
+  sa -- "short-lived tokens from the metadata server<br/>(no key file anywhere)" --> vertex
+  note["Never sent to the browser:<br/>backend URL, API key, Langfuse keys"]:::note
+  classDef note fill:#fdeee7,stroke:#eb6834,color:#0b0b0b

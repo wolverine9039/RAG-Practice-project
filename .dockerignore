@@ -1,0 +1,20 @@
+# Files excluded from the Docker build context.
+.git/
+.gitignore
+.venv/
+.env
+.env.*
+!.env.example
+cache/
+chroma_db/
+wordpress/
+dist/
+eval/
+*.docx
+**/__pycache__/
+docker-compose.yml
+deploy/cloudrun/
+deploy/wordpress/
+docs/
+.vscode/
+README.md

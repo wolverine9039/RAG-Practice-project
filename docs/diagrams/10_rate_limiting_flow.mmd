@@ -1,0 +1,21 @@
+flowchart TB
+  r["Request from Cloudflare reaches Caddy<br/>client_ip = CF-Connecting-IP (trusted only from Cloudflare ranges)"]
+  c1["Caddy: over 300 requests this minute from this IP?<br/>or chat API over 20? or login POST over 5?"]
+  n["WordPress: valid REST nonce?"]
+  h["Plugin: over 10 questions this hour from this IP,<br/>or 300 questions site-wide today?"]
+  b["Backend: over 2000 model requests today?"]
+  ok(["Answer returned"])
+  x1["429 + Retry-After"]:::stop
+  x2["403 'session expired'"]:::stop
+  x3["429 with a friendly message"]:::stop
+  x4["429 daily usage cap"]:::stop
+  r --> c1
+  c1 -- no --> n
+  c1 -- yes --> x1
+  n -- yes --> h
+  n -- no --> x2
+  h -- no --> b
+  h -- yes --> x3
+  b -- no --> ok
+  b -- yes --> x4
+  classDef stop fill:#fdeee7,stroke:#eb6834,color:#0b0b0b

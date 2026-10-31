@@ -1,0 +1,736 @@
+{
+  "config": {
+    "GOOGLE_CLOUD_PROJECT": "uno-rag-chatbot",
+    "GOOGLE_CLOUD_LOCATION": "global",
+    "GOOGLE_APPLICATION_CREDENTIALS": "",
+    "ROUTER_MODEL": "gemini-3.5-flash-lite",
+    "ROUTER_THINKING": "minimal",
+    "ANSWER_MODEL": "gemini-3.5-flash",
+    "ANSWER_THINKING": "low",
+    "LLM_TEMPERATURE": "0.1",
+    "LLM_MAX_TOKENS": "2000",
+    "EMBED_MODEL": "gemini-embedding-2",
+    "EMBED_DIMENSIONS": "768",
+    "EMBED_QUERY_PREFIX": "task: search result | query: ",
+    "EMBED_DOC_PREFIX": "title: none | text: ",
+    "EMBED_CONCURRENCY": "8",
+    "DAILY_REQUEST_BUDGET": "2000",
+    "ANSWER_CACHE": "True",
+    "CACHE_DIR": "cache",
+    "LANGFUSE_BASE_URL": "https://cloud.langfuse.com",
+    "LANGFUSE_ENVIRONMENT": "local",
+    "LANGFUSE_FLUSH_EACH_REQUEST": "False",
+    "DATA_DIR": "Data",
+    "CHROMA_DIR": "chroma_db",
+    "COLLECTION_NAME": "uno_docs_gemini",
+    "CHUNK_SIZE": "1000",
+    "CHUNK_OVERLAP": "150",
+    "TOP_K": "6",
+    "MAX_REWRITES": "1",
+    "HISTORY_WINDOW": "6",
+    "RETRIEVAL_MODE": "hybrid",
+    "API_HOST": "0.0.0.0",
+    "API_PORT": "8000",
+    "AUTO_INGEST_ON_STARTUP": "True",
+    "LOG_LEVEL": "INFO"
+  },
+  "retrieval": {
+    "vector_only": {
+      "source_hit@1": 100.0,
+      "source_hit@3": 100.0,
+      "source_hit@6": 100.0,
+      "source_precision@k": 90.3,
+      "context_recall@1": 90.3,
+      "context_recall@3": 100.0,
+      "context_recall@6": 100.0,
+      "mrr_gold": 0.952,
+      "avg_latency_ms": 4.4
+    },
+    "bm25_only": {
+      "source_hit@1": 67.7,
+      "source_hit@3": 90.3,
+      "source_hit@6": 100.0,
+      "source_precision@k": 58.1,
+      "context_recall@1": 38.7,
+      "context_recall@3": 61.3,
+      "context_recall@6": 80.6,
+      "mrr_gold": 0.526,
+      "avg_latency_ms": 0.3
+    },
+    "hybrid_rrf": {
+      "source_hit@1": 96.8,
+      "source_hit@3": 100.0,
+      "source_hit@6": 100.0,
+      "source_precision@k": 81.2,
+      "context_recall@1": 71.0,
+      "context_recall@3": 87.1,
+      "context_recall@6": 93.5,
+      "mrr_gold": 0.798,
+      "avg_latency_ms": 1.6
+    },
+    "bm25_title_filter": {
+      "source_hit@1": 96.8,
+      "source_hit@3": 100.0,
+      "source_hit@6": 100.0,
+      "source_precision@k": 93.0,
+      "context_recall@1": 51.6,
+      "context_recall@3": 77.4,
+      "context_recall@6": 93.5,
+      "mrr_gold": 0.663,
+      "avg_latency_ms": 0.2
+    },
+    "hybrid_rrf_title_filter (production)": {
+      "source_hit@1": 96.8,
+      "source_hit@3": 100.0,
+      "source_hit@6": 100.0,
+      "source_precision@k": 92.5,
+      "context_recall@1": 74.2,
+      "context_recall@3": 93.5,
+      "context_recall@6": 96.8,
+      "mrr_gold": 0.836,
+      "avg_latency_ms": 1.5
+    }
+  },
+  "retrieval_run_at": "2026-11-01 02:57",
+  "e2e": {
+    "rag": {
+      "n": 31,
+      "accuracy": 100.0,
+      "route_accuracy": 100.0,
+      "avg_requests": 2.03,
+      "latency": {
+        "mean_s": 3.45,
+        "p50_s": 2.41,
+        "p95_s": 12.13,
+        "max_s": 21.35
+      },
+      "citation_accuracy": 100.0,
+      "false_refusals": 0,
+      "answers_with_markdown": 0
+    },
+    "off_topic": {
+      "n": 6,
+      "accuracy": 100.0,
+      "route_accuracy": 100.0,
+      "avg_requests": 1,
+      "latency": {
+        "mean_s": 0.99,
+        "p50_s": 0.82,
+        "p95_s": 1.87,
+        "max_s": 1.87
+      }
+    },
+    "chitchat": {
+      "n": 16,
+      "accuracy": 100.0,
+      "route_accuracy": 100.0,
+      "avg_requests": 1.06,
+      "latency": {
+        "mean_s": 2.03,
+        "p50_s": 1.0,
+        "p95_s": 17.2,
+        "max_s": 17.2
+      }
+    },
+    "follow_ups": {
+      "n": 4,
+      "accuracy": 100.0,
+      "route_accuracy": 100.0,
+      "avg_requests": 4.5,
+      "latency": {
+        "mean_s": 4.28,
+        "p50_s": 3.26,
+        "p95_s": 8.23,
+        "max_s": 8.23
+      }
+    },
+    "details": [
+      {
+        "q": "How many cards are in the UNO Dare deck?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.011253699893132,
+        "answer": "According to the Uno Dare rulebook, there are 108 cards in the deck."
+      },
+      {
+        "q": "What are the Dare List categories in UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.3729177000932395,
+        "answer": "According to the Uno Dare rulebook, the Dare List categories are Family, Showoff, Daredevil, and House Rules."
+      },
+      {
+        "q": "What happens when a Dare card is played in UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 3.1428203999530524,
+        "answer": "According to the Uno Dare rulebook, when you play a Dare card, the next player must choose to either draw 2 cards or do the dare associated with the number on the card. This card can only be played on a matching color or on another Dare card."
+      },
+      {
+        "q": "How many points is a Wild Dare card worth in UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 21.347234499873593,
+        "answer": "According to the Uno Dare rulebook, a Wild Dare card is worth 50 Points."
+      },
+      {
+        "q": "What happens if a player fails a dare in UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 12.13066909997724,
+        "answer": "According to the Uno Dare rulebook, if a player fails to successfully complete a dare, they suffer a penalty and must draw 2 cards."
+      },
+      {
+        "q": "How many points do you need to win UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.406230399850756,
+        "answer": "According to the Uno Dare rulebook, the first player to reach 500 points wins the game."
+      },
+      {
+        "q": "How many cards are in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 1.8863290001172572,
+        "answer": "According to the Uno No Mercy rulebook, there are 168 cards."
+      },
+      {
+        "q": "What is the Mercy rule in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.5530401000287384,
+        "answer": "According to the Uno No Mercy rulebook, the Mercy rule states that if a player ever has 25 or more cards in their hand, they are out of the game. Their hand of cards is set aside until the deck runs out and needs to be reshuffled."
+      },
+      {
+        "q": "How does stacking work in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 3.0682810000143945,
+        "answer": "According to the Uno No Mercy rulebook, if a player plays a Draw Card (+2, +4, +6, or +10), you can stack the penalty by playing a Draw Card of equal or higher value from your hand. This adds your card's value to the total penalty for the next player, and the stacking continues until a player cannot play an equal or higher Draw Card, forcing them to take the full accumulated penalty."
+      },
+      {
+        "q": "What happens when you play a 7 in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.123307599918917,
+        "answer": "According to the Uno No Mercy rulebook, when you play a 7 card of any color, you must swap your hand with another player of your choice, and play then continues in the current order."
+      },
+      {
+        "q": "What happens when a 0 is played in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 1.7953562999609858,
+        "answer": "According to the Uno No Mercy rulebook, when you play a 0 card of any color, all players must pass their hand to the next player in the current direction of play."
+      },
+      {
+        "q": "What does the Wild Color Roulette card do?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 3,
+        "total_s": 4.184354400029406,
+        "answer": "According to the Uno No Mercy rulebook, when a Wild Color Roulette Card is played, the next player chooses a color and must reveal cards one at a time from the Draw Pile until they get a card of that color (Wild Cards do not count). That player then adds all the revealed cards to their hand and loses their turn."
+      },
+      {
+        "q": "How many points do you get for knocking out a player in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.2543486000504345,
+        "answer": "According to the Uno No Mercy rulebook, you receive 250 Points for each player knocked out of the game during the hand."
+      },
+      {
+        "q": "How many points are needed to win UNO No Mercy when keeping score?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.1908106999471784,
+        "answer": "According to the Uno No Mercy rulebook, when keeping score, a player is the winner when they reach 1000 points."
+      },
+      {
+        "q": "What does the Discard All card do in UNO No Mercy?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.2914332998916507,
+        "answer": "According to the Uno No Mercy rulebook, the Discard All Card allows you to discard all the cards in your hand that match the color of the Discard All Card. You must then place the extra cards under the Discard All Card."
+      },
+      {
+        "q": "How many cards are in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 1.763928100001067,
+        "answer": "According to the Uno Flip rulebook, there are 112 cards in the game."
+      },
+      {
+        "q": "What does the Flip card do in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.7159603000618517,
+        "answer": "According to the Uno Flip rulebook, playing a Flip card causes everything to flip from the Light Side to the Dark Side, or from the Dark Side to the Light Side. Once played, the Discard Pile, the Draw Pile, and everyone's hands must be flipped over to the other side, which remains in play until another Flip card is played."
+      },
+      {
+        "q": "What does the Draw Five card do in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.1542388000525534,
+        "answer": "According to the Uno Flip rulebook, when you play a Draw Five card, the next player must draw five cards and miss their turn. This card may only be played on a matching color or on another Draw Five card."
+      },
+      {
+        "q": "What does the Skip Everyone card do in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.745793800102547,
+        "answer": "According to the Uno Flip rulebook, when you play the Skip Everyone card, all players are \"skipped\" (losing their turn), and play returns to whoever laid down the card. This card may only be played on a matching color or on another Skip Everyone card."
+      },
+      {
+        "q": "How many points is the Wild Draw Color card worth in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.5708083000499755,
+        "answer": "According to the Uno Flip rulebook, the Wild Draw Color card is worth 60 Points."
+      },
+      {
+        "q": "In UNO Flip, what happens if you challenge a Wild Draw 2 and the player is innocent?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.193610299844295,
+        "answer": "According to the Uno Flip rulebook, if you challenge a Wild Draw 2 card and the challenged player is innocent, you must draw the 2 cards plus an additional 2 cards, making a total of 4 cards."
+      },
+      {
+        "q": "What colors are on the dark side of UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 3.147876399802044,
+        "answer": "According to the Uno Flip rulebook, the colors on the dark side are pink, teal, orange, and purple."
+      },
+      {
+        "q": "How many points is the Skip Everyone card worth in UNO Flip?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.28828030009754,
+        "answer": "According to the Uno Flip rulebook, the Skip Everyone card is worth 30 Points."
+      },
+      {
+        "q": "How many cards are dealt to each player in UNO All Wild?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 1.9438875999767333,
+        "answer": "According to the Uno All Wild Rules, 7 cards are dealt to each player during setup."
+      },
+      {
+        "q": "What does the Wild Skip Two card do in UNO All Wild?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.5057282999623567,
+        "answer": "According to the Uno All Wild Rules, when a Wild Skip Two card is played, the next two players lose their turns."
+      },
+      {
+        "q": "What does the Wild Forced Swap card do?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.406226099934429,
+        "answer": "According to the Uno All Wild Rules, when the Wild Forced Swap card is played, you must choose another player and exchange hands with them. If either player ends up with only one card in their hand after the swap, they must remember to shout \"UNO!\"."
+      },
+      {
+        "q": "What does the Wild Targeted Draw Two card do?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.087754299864173,
+        "answer": "According to the Uno All Wild Rules rulebook, when a Wild Targeted Draw Two card is played, a player of your choice draws 2 cards, and they do not lose their next turn."
+      },
+      {
+        "q": "In UNO All Wild, do you need to match the color or number?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.501819900004193,
+        "answer": "According to the Uno All Wild Rules, every card is wild, so you do not need to match number or color as in regular UNO; you just play a card."
+      },
+      {
+        "q": "How many points do you need to win UNO All Wild?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno-all-wild-rules-pdf-unoallwild.com_.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.343483000062406,
+        "answer": "According to the Uno All Wild Rules, when a player reaches 500 points, they are the winner."
+      },
+      {
+        "q": "What is the penalty for forgetting to call UNO?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf",
+          "Uno No mercy.pdf"
+        ],
+        "requests": 2,
+        "total_s": 2.9300847998820245,
+        "answer": "According to the Uno Dare rulebook, if you do not yell \"UNO\" and are caught before the next player begins their turn, you must draw two cards. Similarly, in the Uno No Mercy rulebook, if someone catches you and calls out \"UNO\" before you do, you must draw 2 cards."
+      },
+      {
+        "q": "Which card makes the next player draw until they get a chosen color?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 2,
+        "total_s": 5.027769700158387,
+        "answer": "According to the Uno Flip rulebook, the Wild Draw Color Card is the card that forces the next player to draw until they get a color of your choosing."
+      },
+      {
+        "q": "What is the capital of France?",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.8719779001548886,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "Who won the 2018 FIFA World Cup?",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.8179195998236537,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "Write a Python function to reverse a string.",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.9160928998608142,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "How do I bake a chocolate cake?",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.7884194999933243,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "How does castling work in chess?",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.708959300071001,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "What is the boiling point of water?",
+        "correct": true,
+        "route": "off_topic",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.82887679990381,
+        "answer": "Sorry, I can only help with questions about the UNO rulebooks (UNO, UNO Flip, UNO Dare, UNO No Mercy and UNO All Wild)."
+      },
+      {
+        "q": "hi",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.9517388001549989,
+        "answer": "Hello! I am your guide to UNO rulebooks. Feel free to ask me anything about UNO Classic, Uno Flip, Uno Dare, Uno All Wild, or Uno No Mercy!"
+      },
+      {
+        "q": "hello there",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.9922519000247121,
+        "answer": "Hello! I am your assistant for various UNO card game rulebooks, including Classic, Flip, All Wild, Dare, and No Mercy. Feel free to ask me any rules questions you have."
+      },
+      {
+        "q": "hey!",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.0558084999211133,
+        "answer": "Hello there! I am your assistant for various UNO card game rulebooks, including Classic, Flip, No Mercy, Dare, and All Wild. Feel free to ask me any rules or gameplay questions you have!"
+      },
+      {
+        "q": "good morning",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.9685517000034451,
+        "answer": "Good morning! Welcome to the UNO rulebook assistant. Feel free to ask me anything about the rules for Uno Classic, UNO Flip, Uno All Wild, Uno Dare, or Uno No Mercy."
+      },
+      {
+        "q": "how are you?",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 2,
+        "total_s": 17.203500099945813,
+        "answer": "Hello! I am doing well, thank you for asking. I am your front desk assistant for UNO card game rulebooks, and I am ready to help you with rules for UNO Classic, UNO Flip, UNO All Wild, UNO Dare, and UNO No Mercy. Feel free to ask me any rule questions!"
+      },
+      {
+        "q": "how's it going?",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.0992467000614852,
+        "answer": "Hello! I am doing well, thank you. I am here to help you with the rules for UNO Classic, UNO Flip, UNO Dare, UNO No Mercy, and UNO All Wild. Feel free to ask me anything about how to play!"
+      },
+      {
+        "q": "thanks!",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.1701543999370188,
+        "answer": "You are very welcome! If you have any questions about UNO Classic, UNO Flip, UNO All Wild, UNO Dare, or UNO No Mercy, feel free to ask."
+      },
+      {
+        "q": "thank you so much",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.8274409000296146,
+        "answer": "You are very welcome! Feel free to ask if you have any questions about the rules for Uno Classic, Uno Flip, Uno Dare, Uno No Mercy, or Uno All Wild."
+      },
+      {
+        "q": "bye",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.0126910998951644,
+        "answer": "Goodbye! Feel free to come back whenever you have questions about UNO rules."
+      },
+      {
+        "q": "see you later",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.1957173999398947,
+        "answer": "Goodbye! Feel free to return whenever you have questions about any of the UNO rulebooks."
+      },
+      {
+        "q": "who are you?",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.8918846000451595,
+        "answer": "Hello! I am your friendly front desk assistant for the UNO card game rulebooks. I can help you with rules, cards, and gameplay for UNO Classic, UNO Flip, UNO Dare, UNO All Wild, and UNO No Mercy. Feel free to ask me anything about how to play!"
+      },
+      {
+        "q": "what can you do?",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.1103109000250697,
+        "answer": "I am your front desk assistant for UNO card game rulebooks. I can help you answer questions about UNO Classic, UNO Flip, UNO Dare, UNO All Wild, and UNO No Mercy. Feel free to ask me any rules!"
+      },
+      {
+        "q": "what is your name?",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.8569777999073267,
+        "answer": "Hello! I am your friendly front desk assistant for UNO card game rulebooks. Feel free to ask me anything about the rules for UNO Classic, UNO Flip, UNO Dare, UNO All Wild, or UNO No Mercy!"
+      },
+      {
+        "q": "nice to meet you",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 1.2465826999396086,
+        "answer": "Nice to meet you too! I am your assistant for UNO card game rules. Feel free to ask me anything about Uno Classic, Uno Flip, Uno Dare, Uno All Wild, or Uno No Mercy."
+      },
+      {
+        "q": "ok cool",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.8774482000153512,
+        "answer": "Glad I could help! If you have any questions about UNO Classic, UNO Flip, UNO All Wild, UNO Dare, or UNO No Mercy, just let me know."
+      },
+      {
+        "q": "you're awesome",
+        "correct": true,
+        "route": "chitchat",
+        "sources": [],
+        "requests": 1,
+        "total_s": 0.9448291999287903,
+        "answer": "Thank you! I am glad I can help. Feel free to ask me anything about the rules for UNO Classic, UNO Flip, UNO All Wild, UNO Dare, or UNO No Mercy."
+      },
+      {
+        "q": "What does the Skip Everyone card do in UNO Flip? -> How many points is it worth?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 4,
+        "total_s": 2.351433000061661,
+        "answer": "According to the Uno Flip rulebook, the Skip Everyone card is worth 30 Points."
+      },
+      {
+        "q": "How many cards are dealt in UNO No Mercy? -> Is it the same in UNO Dare?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno Dare.pdf"
+        ],
+        "requests": 5,
+        "total_s": 3.6791172998491675,
+        "answer": "According to the Uno Dare rulebook, the dealer shuffles and deals each player 7 cards."
+      },
+      {
+        "q": "What is the Mercy rule in UNO No Mercy? -> How many points do you get for knocking someone out?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "Uno No mercy.pdf"
+        ],
+        "requests": 4,
+        "total_s": 2.8426393000409007,
+        "answer": "According to the Uno No Mercy rulebook, you receive a bonus of 250 Points for each player knocked out of the game during the hand."
+      },
+      {
+        "q": "What does the Wild Draw Color card do in UNO Flip? -> What happens if I challenge it and the player was innocent?",
+        "correct": true,
+        "route": "rulebook",
+        "sources": [
+          "uno flip.pdf"
+        ],
+        "requests": 5,
+        "total_s": 8.228940400062129,
+        "answer": "According to the Uno Flip rulebook, if the challenged player is innocent, you must draw cards until you get the chosen color plus an additional 2 cards."
+      }
+    ]
+  },
+  "e2e_run_at": "2026-11-01 03:00",
+  "e2e_limit": null
+}

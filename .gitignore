@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+chroma_db/
+.env
+cache/
+dist/
+wordpress/admin-credentials.txt
+deploy/build/
+deploy/cloudrun/env.*.yaml
+wordpress/admin-credentials-gcp.txt
+docs/tools/node_modules/

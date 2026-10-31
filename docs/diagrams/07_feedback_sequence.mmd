@@ -1,0 +1,15 @@
+sequenceDiagram
+  autonumber
+  actor U as Visitor
+  participant JS as chatbot.js
+  participant WP as WordPress
+  participant API as FastAPI
+  participant LF as Langfuse
+  U->>JS: thumbs up / down
+  JS->>WP: POST /feedback<br/>{trace_id, value} + nonce
+  WP->>WP: nonce, 60/hour per IP,<br/>trace_id = 32 hex
+  WP->>API: POST /feedback<br/>+ X-API-Key
+  API->>LF: score "user-feedback"<br/>(BOOLEAN) on the trace
+  API-->>WP: 204
+  WP-->>JS: ok
+  JS-->>U: "Thanks for the feedback!"

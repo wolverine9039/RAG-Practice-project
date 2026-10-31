@@ -1,0 +1,21 @@
+sequenceDiagram
+  autonumber
+  participant WP as WordPress plugin
+  participant API as FastAPI
+  participant G as LangGraph
+  participant AI as Gemini
+  participant LF as Langfuse
+  WP->>API: POST /chat + X-API-Key<br/>{question, session_id, visitor hash}
+  API->>API: key (401), validation (422),<br/>daily budget (429)
+  alt first turn, answer cached
+    API-->>WP: cached answer + sources<br/>(no model calls)
+  else run the graph
+    API->>G: ainvoke(thread_id = session_id)
+    G->>AI: analyze (Flash-Lite)<br/>route + standalone question
+    G->>AI: query embedding<br/>(cached in SQLite)
+    G->>G: hybrid search, top 6 chunks
+    G->>AI: answer from the chunks (Flash)
+    G-->>API: answer, used chunks, route
+  end
+  API--)LF: trace: steps, models, tokens
+  API-->>WP: {answer, sources[], cached, trace_id}

@@ -1,0 +1,28 @@
+flowchart TB
+  user(["Visitor's browser"])
+  subgraph CF["Cloudflare"]
+    edge["Proxy + CDN: TLS, DDoS shield,<br/>sets CF-Connecting-IP"]
+  end
+  subgraph VM["Compute Engine VM uno-wordpress (Docker)"]
+    direction LR
+    caddy["Caddy<br/>HTTPS + per-IP rate limits"] --> wp["WordPress + plugin<br/>UNO Rulebook RAG Chatbot"]
+    wp --- db[("MariaDB<br/>pages, settings, counters")]
+  end
+  subgraph CR["Cloud Run service uno-rag-backend"]
+    direction LR
+    api["FastAPI<br/>/chat /feedback /health"] --> lg["LangGraph<br/>router, retrieve, answer"]
+    lg --> chroma[("Chroma index<br/>60 chunks, 768-d")]
+    api --- cache[("SQLite caches")]
+  end
+  subgraph AI["Vertex AI - Gemini"]
+    direction LR
+    flashlite["gemini-3.5-flash-lite<br/>router / rewrite"]
+    flash["gemini-3.5-flash<br/>answer"]
+    emb["gemini-embedding-2<br/>embeddings"]
+  end
+  lf["Langfuse Cloud<br/>traces, scores, evals"]
+  user -- HTTPS --> edge
+  edge -- "HTTPS (Full strict),<br/>Cloudflare IPs only" --> caddy
+  wp -- "HTTPS + X-API-Key<br/>(server-side only)" --> api
+  lg --> AI
+  api -. traces .-> lf

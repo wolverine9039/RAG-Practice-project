@@ -1,0 +1,222 @@
+{
+  "run_at": "2026-11-01 02:54",
+  "site": "https://uno-chatbot.buildwithmayank.tech",
+  "backend_host": "uno-rag-backend-231627702902.us-central1.run.app",
+  "summary": {
+    "PASS": 26,
+    "FAIL": 0,
+    "INFO": 4
+  },
+  "checks": [
+    {
+      "area": "backend",
+      "check": "root is a JSON service description (no web page)",
+      "expected": "200 application/json",
+      "observed": "200 application/json",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "/health is public and contains no secrets",
+      "expected": "200, no secret values",
+      "observed": "200, leaked: none",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /chat with no key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /chat with wrong key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /ingest with no key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /ingest with wrong key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /feedback with no key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "POST /feedback with wrong key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "DELETE /chat/{session_id} with no key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "DELETE /chat/{session_id} with wrong key is rejected",
+      "expected": "401",
+      "observed": "401",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "question over 1000 characters is rejected before any model call",
+      "expected": "422",
+      "observed": "422",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "malformed feedback trace id is rejected",
+      "expected": "422",
+      "observed": "422",
+      "result": "PASS"
+    },
+    {
+      "area": "backend",
+      "check": "OpenAPI docs page",
+      "expected": "informational",
+      "observed": "200 (public schema only; every data endpoint still needs the key)",
+      "result": "INFO"
+    },
+    {
+      "area": "site",
+      "check": "valid HTTPS certificate, served through Cloudflare",
+      "expected": "200, server: cloudflare, cf-ray",
+      "observed": "200, server=cloudflare, cf-ray=yes",
+      "result": "PASS"
+    },
+    {
+      "area": "site",
+      "check": "http redirects to https",
+      "expected": "301/308 -> https://",
+      "observed": "308 -> https://uno-chatbot.buildwithmayank.tech/",
+      "result": "PASS"
+    },
+    {
+      "area": "network",
+      "check": "origin 34.57.222.238:443 not reachable directly (Cloudflare-only firewall)",
+      "expected": "no connection",
+      "observed": "no answer within 5s",
+      "result": "PASS"
+    },
+    {
+      "area": "network",
+      "check": "origin 34.57.222.238:80 not reachable directly (Cloudflare-only firewall)",
+      "expected": "no connection",
+      "observed": "no answer within 5s",
+      "result": "PASS"
+    },
+    {
+      "area": "site",
+      "check": "xmlrpc.php blocked",
+      "expected": "403",
+      "observed": "403",
+      "result": "PASS"
+    },
+    {
+      "area": "site",
+      "check": "security header: HSTS",
+      "expected": "informational",
+      "observed": "not set",
+      "result": "INFO"
+    },
+    {
+      "area": "site",
+      "check": "security header: nosniff",
+      "expected": "informational",
+      "observed": "not set",
+      "result": "INFO"
+    },
+    {
+      "area": "site",
+      "check": "security header: frame options",
+      "expected": "informational",
+      "observed": "not set",
+      "result": "INFO"
+    },
+    {
+      "area": "plugin",
+      "check": "chat page does not expose the backend API key",
+      "expected": "key absent",
+      "observed": "absent",
+      "result": "PASS"
+    },
+    {
+      "area": "plugin",
+      "check": "chat page does not expose the backend address",
+      "expected": "backend host absent",
+      "observed": "absent",
+      "result": "PASS"
+    },
+    {
+      "area": "plugin",
+      "check": "REST /ask without a nonce is rejected",
+      "expected": "403",
+      "observed": "403",
+      "result": "PASS"
+    },
+    {
+      "area": "plugin",
+      "check": "REST /ask with a forged nonce is rejected",
+      "expected": "403",
+      "observed": "403",
+      "result": "PASS"
+    },
+    {
+      "area": "plugin",
+      "check": "REST /ask with the page's nonce is answered (WordPress -> backend proxy works)",
+      "expected": "200",
+      "observed": "200",
+      "result": "PASS"
+    },
+    {
+      "area": "rate-limit",
+      "check": "forged CF-Connecting-IP header is rejected at Cloudflare's edge",
+      "expected": "403 error 1000",
+      "observed": "403 Cloudflare error 1000",
+      "result": "PASS"
+    },
+    {
+      "area": "rate-limit",
+      "check": "chat API: per-IP burst limit (20/min) holds even with spoofed IP headers",
+      "expected": "429 by the 21st call in the minute, never 200",
+      "observed": "first 429 at call 18 of this burst (+3 earlier), Retry-After 53s, statuses [403, 429]",
+      "result": "PASS"
+    },
+    {
+      "area": "rate-limit",
+      "check": "login: 5 attempts/min per IP, then 429 with Retry-After",
+      "expected": "6th attempt -> 429",
+      "observed": "attempt statuses [200, 200, 200, 200, 200, 429], Retry-After 59s",
+      "result": "PASS"
+    },
+    {
+      "area": "rate-limit",
+      "check": "login page itself still loads while POSTs are limited",
+      "expected": "200",
+      "observed": "200",
+      "result": "PASS"
+    }
+  ]
+}

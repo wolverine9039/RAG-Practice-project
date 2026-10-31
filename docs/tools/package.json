@@ -1,0 +1,9 @@
+{
+  "name": "uno-rag-report-tools",
+  "private": true,
+  "description": "Builds docs/UNO_RAG_Chatbot_Technical_Report.docx and renders the Mermaid diagrams in docs/diagrams",
+  "dependencies": {
+    "docx": "^9.15.0",
+    "mermaid": "^11.12.0"
+  }
+}

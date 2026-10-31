@@ -1,0 +1,23 @@
+# Files NOT uploaded by `gcloud run deploy --source .` (without this file gcloud would use .gitignore,
+# which excludes chroma_db/ and would drop the pre-built index).
+.gcloudignore
+/.git/
+.gitignore
+/.venv/
+/.env
+.env.*
+!.env.example
+/cache/
+/chroma_db/
+/wordpress/
+/dist/
+/eval/
+*.docx
+**/__pycache__/
+/docker-compose.yml
+/deploy/cloudrun/
+/deploy/wordpress/
+/docs/
+/.vscode/
+/README.md
+.dockerignore

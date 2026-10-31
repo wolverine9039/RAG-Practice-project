@@ -1,0 +1,12 @@
+flowchart TB
+  start([START]) --> analyze["analyze (Flash-Lite, JSON)<br/>route + standalone question<br/>+ small-talk reply"]
+  analyze -- "chitchat or off_topic" --> direct["respond_direct<br/>small-talk reply or polite refusal"]
+  analyze -- "rulebook" --> retrieve["retrieve<br/>hybrid search, top 6 chunks"]
+  retrieve --> answer["answer (Flash, JSON)<br/>found, answer, used chunks<br/>grounded in the chunks only"]
+  answer -- "found" --> done([END])
+  answer -- "not found and a rewrite is left<br/>(MAX_REWRITES = 1)" --> rewrite["rewrite_query (Flash-Lite)<br/>new search wording"]
+  rewrite --> retrieve
+  answer -- "not found, no rewrite left" --> refuse["NO_CONTEXT_ANSWER<br/>'I couldn't find that in the rulebooks'"]
+  refuse --> done
+  direct --> done
+  mem[("MemorySaver checkpointer<br/>thread_id = session_id<br/>last 6 messages as history")] -.- analyze

@@ -1,0 +1,29 @@
+flowchart LR
+  subgraph PC["1. On the developer PC: deploy\wordpress\deploy.ps1 -Domain ..."]
+    direction TB
+    p1["Static IP, firewall rule, VM<br/>(created only if missing)"]
+    p2["Fetch Cloudflare IP ranges"]
+    p3["Wait until the domain resolves to<br/>Cloudflare (else stop with DNS help)"]
+    p4["Bundle: compose file, Caddyfile, caddy/Dockerfile,<br/>plugin, setup PHP, Cloudflare ranges,<br/>plugin-settings.json (backend URL + key)"]
+    p5["gcloud compute scp the bundle,<br/>delete the local copy"]
+    p1 --> p2 --> p3 --> p4 --> p5
+  end
+  subgraph VM["2. On the VM: vm-setup.sh (/opt/uno-wp)"]
+    direction TB
+    v1["Install Docker, add 1 GB swap"]
+    v2["Generate DB passwords (.env, mode 600)"]
+    v3["docker compose up --build<br/>(Caddy + rate-limit module),<br/>recreate wordpress + caddy"]
+    v4["wp-cli: install WordPress (first run),<br/>permalinks, activate the plugin"]
+    v5["plugin-options.php (key on stdin),<br/>pages.php (Home, chat page, menu);<br/>delete plugin-settings.json"]
+    v1 --> v2 --> v3 --> v4 --> v5
+  end
+  subgraph FIN["3. Back on the PC"]
+    direction TB
+    f1["Site answers 200 through Cloudflare?"]
+    f2["yes: firewall admits only<br/>Cloudflare ranges"]
+    f3["no: firewall left open,<br/>fix instructions printed"]
+    f4["Save the admin credentials locally"]
+    f1 --> f2 --> f4
+    f1 --> f3
+  end
+  PC ==> VM ==> FIN

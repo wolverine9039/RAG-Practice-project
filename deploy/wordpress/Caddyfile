@@ -1,0 +1,55 @@
+# HTTPS front for WordPress. Caddy gets and renews the certificate for SITE_DOMAIN automatically and redirects
+# http -> https. Behind Cloudflare (proxied DNS record, SSL/TLS "Full (strict)") the HTTP-01 check reaches Caddy
+# through Cloudflare, so renewals keep working while the firewall only admits Cloudflare's IPs.
+{
+	order rate_limit before basic_auth
+	servers {
+		# Only requests arriving from Cloudflare may set the visitor IP (CF-Connecting-IP); {client_ip} below is the
+		# real visitor. CF_IP_RANGES comes from deploy.ps1 (private_ranges when not behind Cloudflare).
+		trusted_proxies static {$CF_IP_RANGES}
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	log {
+		output stderr
+	}
+
+	# Per-visitor limits (429 + Retry-After). The plugin additionally limits questions per hour and per day.
+	rate_limit {
+		zone site {
+			key {client_ip}
+			events 300
+			window 1m
+		}
+		zone chat {
+			match {
+				path /wp-json/uno-chat/*
+			}
+			key {client_ip}
+			events 20
+			window 1m
+		}
+		zone login {
+			match {
+				path /wp-login.php
+				method POST
+			}
+			key {client_ip}
+			events 5
+			window 1m
+		}
+	}
+
+	# XML-RPC is unused here and a common brute-force target
+	@xmlrpc path /xmlrpc.php
+	respond @xmlrpc 403
+
+	header -Server
+	reverse_proxy wordpress:80 {
+		# WordPress takes REMOTE_ADDR from this header (see WORDPRESS_CONFIG_EXTRA); Caddy always overwrites it
+		header_up X-Real-IP {client_ip}
+	}
+}

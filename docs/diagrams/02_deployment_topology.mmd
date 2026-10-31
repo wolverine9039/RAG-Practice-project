@@ -1,0 +1,27 @@
+flowchart TB
+  subgraph Internet
+    visitor(["Visitors"])
+    admin(["Administrator PC<br/>gcloud, Docker, PowerShell"])
+  end
+  subgraph Cloudflare["Cloudflare - zone buildwithmayank.tech"]
+    dns["A record uno-chatbot to 34.57.222.238<br/>Proxied (orange cloud)<br/>SSL/TLS mode Full (strict)"]
+  end
+  subgraph GCP["Google Cloud project uno-rag-chatbot"]
+    subgraph Net["VPC default, firewall uno-wp-web:<br/>tcp 80/443 only from Cloudflare IP ranges"]
+      vm["VM uno-wordpress, us-central1-a<br/>Debian 12, static IP 34.57.222.238<br/>Docker: caddy, wordpress, db"]
+    end
+    run["Cloud Run uno-rag-backend, us-central1<br/>1 vCPU, 1 GiB, 0 to 1 instances<br/>runs as service account uno-rag-backend@"]
+    cb["Cloud Build<br/>builds the Dockerfile"]
+    ar[("Artifact Registry<br/>container images")]
+    vertex["Vertex AI<br/>Gemini models, location global"]
+  end
+  lf["Langfuse Cloud (EU)"]
+  visitor -- "https://uno-chatbot.buildwithmayank.tech" --> dns
+  dns --> vm
+  vm -- "HTTPS + X-API-Key" --> run
+  run -- "service-account identity<br/>(no key file)" --> vertex
+  run -. "traces and scores" .-> lf
+  admin -- "deploy/cloudrun/deploy.ps1" --> cb
+  cb --> ar
+  ar --> run
+  admin -- "deploy/wordpress/deploy.ps1<br/>gcloud compute scp + ssh" --> vm

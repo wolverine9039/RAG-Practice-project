@@ -1,0 +1,62 @@
+# Local WordPress front end for the UNO RAG chatbot.
+#   docker compose up -d                 -> WordPress on http://localhost:8080
+#   powershell -File wordpress/setup.ps1 -> installs WordPress, activates the plugin, creates the chat page
+# The FastAPI backend runs on the host (python -m app.main) and is reached at http://host.docker.internal:8000
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: rootpass
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - ./wordpress/uno-rag-chatbot:/var/www/html/wp-content/plugins/uno-rag-chatbot
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # One-off wp-cli container used by wordpress/setup.ps1 (docker compose run --rm wpcli ...)
+  wpcli:
+    image: wordpress:cli-php8.3
+    profiles: ["tools"]
+    user: "33:33"  # same www-data uid as the apache image, so wp-cli can write .htaccess
+    depends_on:
+      - wordpress
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - ./wordpress/uno-rag-chatbot:/var/www/html/wp-content/plugins/uno-rag-chatbot
+      - ./wordpress/setup:/setup:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  db_data:
+  wp_data:

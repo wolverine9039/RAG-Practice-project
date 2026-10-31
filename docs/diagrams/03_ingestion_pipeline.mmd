@@ -1,0 +1,11 @@
+flowchart TB
+  pdf["Data/*.pdf (5 rulebooks)"] --> plumber["pdfplumber: text + tables per page"]
+  plumber --> clean["Clean: dedupe_chars, drop (cid:N) and unreadable lines, tables to text"]
+  clean --> dup{"Page text hash seen before?"}
+  dup -- yes --> skip["Skip duplicate page"]
+  dup -- no --> page["One Document per page (metadata: source, page)"]
+  page --> split["RecursiveCharacterTextSplitter: 1000 chars, 150 overlap"]
+  split --> header["Prefix 'Rulebook: Title'; metadata chunk, title; id = file:page:chunk"]
+  header --> embed["gemini-embedding-2: 'title: none | text: ...', 768-d, 8 parallel requests"]
+  embed --> store[("Chroma collection uno_docs_gemini (cosine HNSW, 60 chunks)")]
+  store --> bm25[("BM25 keyword index, rebuilt in memory from Chroma")]

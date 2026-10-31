@@ -1,0 +1,26 @@
+flowchart TB
+  subgraph Theme["WordPress site (Twenty Twenty-Five block theme)"]
+    direction LR
+    home["Page 'Home' (front page)<br/>[uno_chatbot_home]"]
+    chat["Page 'UNO Rules Chat'<br/>[uno_chatbot layout=page]"]
+    menu["Navigation 'Main menu'<br/>(Home only)"]
+  end
+  subgraph Plugin["Plugin uno-rag-chatbot (PHP, server side)"]
+    direction LR
+    main["uno-rag-chatbot.php<br/>settings, shortcodes, REST routes,<br/>rate limits, backend proxy"]
+    homephp["includes/home.php<br/>landing page"]
+    unin["uninstall.php"]
+  end
+  subgraph Assets["Browser assets"]
+    direction LR
+    js["assets/chatbot.js<br/>widget, session id, suggestions,<br/>sources, feedback, New chat"]
+    css["assets/chatbot.css<br/>chat theme"]
+    hcss["assets/home.css<br/>landing styles"]
+  end
+  rest["REST namespace uno-chat/v1: /ask, /feedback, /reset"]
+  setup["wordpress/setup/pages.php<br/>creates pages + menu"]
+  setup -.-> Theme
+  Theme --> Plugin
+  Plugin -- "wp_enqueue_script + wp_localize_script<br/>(restUrl, nonce, texts, suggestions)" --> Assets
+  js -- "fetch + X-WP-Nonce" --> rest
+  main --- rest

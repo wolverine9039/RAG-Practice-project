@@ -1,0 +1,28 @@
+flowchart LR
+  subgraph A["A. Local development"]
+    direction TB
+    a1["1. Install Python 3.13, Docker Desktop,<br/>Google Cloud SDK"]
+    a2["2. Google Cloud project with billing;<br/>gcloud auth login +<br/>application-default login"]
+    a3["3. .venv + pip install -r requirements.txt;<br/>copy .env.example to .env and fill it"]
+    a4["4. python -m app.ingest --reset"]
+    a5["5. python -m app.main (port 8000)"]
+    a6["6. wordpress\setup.ps1 (port 8080)"]
+    a7["7. python -m eval.run_eval"]
+    a1 --> a2 --> a3 --> a4 --> a5 --> a6 --> a7
+  end
+  subgraph B["B. Cloud"]
+    direction TB
+    b1["8. deploy\cloudrun\deploy.ps1<br/>(backend on Cloud Run)"]
+    b2["9. deploy\wordpress\deploy.ps1<br/>(static IP, firewall, VM)"]
+    b3["10. Cloudflare: Proxied A record,<br/>SSL/TLS Full (strict)"]
+    b4["11. deploy\wordpress\deploy.ps1 -Domain ...<br/>(site installed, firewall locked)"]
+    b1 --> b2 --> b3 --> b4
+  end
+  subgraph C["C. Verify"]
+    direction TB
+    c1["12. eval.run_eval --backend-url ..."]
+    c2["13. eval.security_checks"]
+    c3["14. Chat + thumbs up on the site;<br/>trace visible in Langfuse"]
+    c1 --> c2 --> c3
+  end
+  A ==> B ==> C

@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph Offline["Indexing (python -m app.ingest)"]
+    direction TB
+    o1["PDF rulebooks"] --> o2["pdfplumber text + tables"]
+    o2 --> o3["Chunks with a rulebook header"]
+    o3 --> o4["Gemini embeddings"]
+    o4 --> o5[("Chroma index")]
+  end
+  subgraph Online["Answering (every question)"]
+    direction TB
+    q1["Question + recent chat history"] --> q2["Router: standalone question"]
+    q2 --> q3["Hybrid search over the index"]
+    q3 --> q4["Top 6 chunks"]
+    q4 --> q5["Gemini Flash answer"]
+    q5 --> q6["Answer + sources (rulebook, page)"]
+    q6 --> s1[("Answer cache")]
+    q6 --> s2["Langfuse trace + feedback"]
+  end
+  Offline == "index searched by" ==> Online

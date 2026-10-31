@@ -1,0 +1,7 @@
+flowchart TB
+  a["1. Cloudflare<br/>absorbs DDoS traffic, TLS to the visitor, rejects forged CF-Connecting-IP headers"] --> b
+  b["2. Google Cloud firewall uno-wp-web<br/>ports 80/443 only from Cloudflare IP ranges: the origin IP cannot be attacked directly"] --> c
+  c["3. Caddy<br/>HTTPS (Let's Encrypt), real visitor IP trusted only from Cloudflare,<br/>per-IP limits: 300 requests/min, chat API 20/min, login 5/min; xmlrpc.php blocked"] --> d
+  d["4. WordPress + plugin<br/>REST nonce, 10 questions/hour and 60 ratings/hour per IP,<br/>300 questions/day site-wide, input validation, DISALLOW_FILE_EDIT"] --> e
+  e["5. FastAPI backend<br/>X-API-Key on every data endpoint, Pydantic validation (question up to 1000 chars),<br/>daily model-request budget (2000)"] --> f
+  f["6. Google Cloud identity and runtime<br/>least-privilege service account, no key files,<br/>non-root container, secrets only in environment variables"]

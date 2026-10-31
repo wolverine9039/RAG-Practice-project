@@ -1,0 +1,14 @@
+flowchart TB
+  q["Standalone search query<br/>(written by the router)"] --> detect{"Rulebook named in the query?<br/>detect_sources()"}
+  detect -- "yes: only that PDF" --> vec
+  detect -- "yes: only that PDF" --> kw
+  detect -- "no: all PDFs" --> vec
+  detect -- "no: all PDFs" --> kw
+  subgraph both["Two searches, 18 candidates each (3 x TOP_K)"]
+    vec["Vector search<br/>query embedding (cached in SQLite)<br/>Chroma cosine similarity"]
+    kw["BM25 keyword search<br/>rank_bm25 over the same chunks"]
+  end
+  vec --> rrf["Reciprocal Rank Fusion<br/>score = sum of 1 / (60 + rank)"]
+  kw --> rrf
+  rrf --> top["Top 6 chunks<br/>with rulebook + page"]
+  top --> ans["answer node (Gemini Flash)<br/>answers only from these chunks"]
